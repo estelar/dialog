@@ -78,6 +78,7 @@ export class AttachFocus {
 
 
 export class DialogController {
+  settings: any;
   constructor(renderer: DialogRenderer, settings: any, resolve: Function, reject: Function) {
     this._renderer = renderer;
     this.settings = settings;
@@ -85,11 +86,11 @@ export class DialogController {
     this._reject = reject;
   }
 
-  ok(result: DialogResult) {
+  ok(result: any) {
     this.close(true, result);
   }
 
-  cancel(result: DialogResult) {
+  cancel(result: any) {
     this.close(false, result);
   }
 
@@ -104,7 +105,7 @@ export class DialogController {
     });
   }
 
-  close(ok: boolean, result: DialogResult) {
+  close(ok: boolean, result: any) {
     let returnResult = new DialogResult(!ok, result);
     return invokeLifecycle(this.viewModel, 'canDeactivate').then(canDeactivate => {
       if (canDeactivate) {
@@ -122,9 +123,9 @@ export class DialogController {
 }
 
 class DialogResult {
-  wasCancelled = false;
-  output;
-  constructor(cancelled, result) {
+  wasCancelled: boolean = false;
+  output: any;
+  constructor(cancelled: boolean, result: any) {
     this.wasCancelled = cancelled;
     this.output = result;
   }
@@ -152,6 +153,13 @@ let transitionEvent = (function() {
 
 function getNextZIndex() {
   return ++currentZIndex;
+}
+
+function centerDialog(modalContainer) {
+  const child = modalContainer.children[0];
+  const vh = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
+
+  child.style.marginTop = Math.max((vh - child.offsetHeight) / 2, 30) + 'px';
 }
 
 export let globalSettings = {
@@ -194,7 +202,13 @@ export class DialogRenderer {
       this.dialogControllers.push(dialogController);
 
       dialogController.slot.attached();
-      dialogController.centerDialog();
+      if (typeof settings.position === 'function') {
+        settings.position(modalContainer, modalOverlay);
+      } else {
+        if (!settings.centerHorizontalOnly) {
+          centerDialog(modalContainer);
+        }
+      }
 
       modalOverlay.onclick = () => {
         if (!settings.lock) {
@@ -246,16 +260,6 @@ export class DialogRenderer {
       document.body.removeChild(modalContainer);
       dialogController.slot.detached();
       return Promise.resolve();
-    };
-
-    dialogController.centerDialog = () => {
-      let child = modalContainer.children[0];
-
-      if (!settings.centerHorizontalOnly) {
-        let vh = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
-        // Left at least 30px from the top
-        child.style.marginTop = Math.max((vh - child.offsetHeight) / 2, 30) + 'px';
-      }
     };
 
     return Promise.resolve();
